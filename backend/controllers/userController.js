@@ -23,7 +23,7 @@ const registerUser = async (req, res) => {
       [username, email, hashedPassword]
     );
 
-    const token = jwt.sign({ id: result.rows[0].id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: result.rows[0].id, username: result.rows[0].username}, process.env.JWT_SECRET, {
       expiresIn: "30d",
     });
 
@@ -69,7 +69,7 @@ const loginUser = async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        email: email.email,
+        email: user.email,
       },
       token,
     });

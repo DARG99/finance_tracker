@@ -9,7 +9,7 @@ const transactionRoutes = require('./routes/transactions');
 const categoryRoutes = require('./routes/categories');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
 
 app.use(cors());
@@ -17,12 +17,10 @@ app.use(express.json());
 
 
 app.use('/api/users', userRoutes);
-
-/*
-
+app.use('/api/transactions', transactionRoutes);
 app.use('/api/categories', categoryRoutes);
-app.use('/api/transations', transactionRoutes);
-*/
+
+
 
 app.get('/', (req, res) => {
     res.send('Finance Tracker API is running');
