@@ -61,7 +61,7 @@ function AddTransaction() {
       amount: parseFloat(formData.amount),
       type: formData.type,
       description: "", // Add a description input if needed
-      transactionDate: formData.date,
+      transaction_date: formData.date,
       categoryid: parseInt(formData.category), // Assuming it's an integer
     };
 
