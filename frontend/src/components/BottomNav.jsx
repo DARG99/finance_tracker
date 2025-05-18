@@ -4,7 +4,7 @@ import { TrendingUp } from "lucide-react";
 
 export default function BottomNav() {
   return (
-    <nav className="navbar fixed-bottom bg-light border-top d-flex justify-content-around py-2">
+    <nav className="navbar fixed-bottom bg-light border-top d-flex justify-content-around py-2 pb-4">
       <NavLink
         to="/dashboard"
         className="text-center text-secondary text-decoration-none"

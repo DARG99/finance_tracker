@@ -1,23 +1,61 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Spinner} from "react-bootstrap";
+import { Spinner } from "react-bootstrap";
 import { CurrencyDollar, Pencil, Trash, Funnel } from "react-bootstrap-icons";
 import EditTransactionModal from "../components/EditTransaction";
+import ConfirmModal from "../components/ConfirmModal";
 
 function Transaction() {
   const [transactions, setTransactions] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
   const [pageNumber, setPageNumber] = useState(1);
+  const limit = 10;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [categories, setCategories] = useState(["All"]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+
+  const fetchCategories = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.get("http://192.168.1.85:5000/api/categories", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const allCategories = res.data.map((cat) => cat.name); // Adjust based on your actual data shape
+      setCategories(["All", ...allCategories]);
+    } catch (err) {
+      console.error("Failed to load categories", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500); // debounce delay
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    setPageNumber(1);
+  }, [debouncedSearch, selectedCategory]);
 
   useEffect(() => {
     fetchTransactions();
-  }, [pageNumber]);
+  }, [pageNumber, debouncedSearch, selectedCategory]);
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -27,18 +65,20 @@ function Transaction() {
 
     try {
       const res = await axios.get("http://192.168.1.85:5000/api/transactions", {
-        params: { page: pageNumber },
+        params: {
+          page: pageNumber,
+          limit,
+          search: debouncedSearch,
+          category: selectedCategory === "All" ? "" : selectedCategory,
+        },
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      setTransactions((prev) => {
-        const newTransactions = res.data.filter(
-          (txn) => !prev.some((p) => p.id === txn.id)
-        );
-        return [...prev, ...newTransactions];
-      });
+      setTransactions(res.data.transactions);
+      const total = res.data.total;
+      setTotalPages(Math.ceil(total / limit));
     } catch (err) {
       console.error(err);
       setError("Failed to load transactions.");
@@ -50,6 +90,7 @@ function Transaction() {
   const handleDelete = async (id) => {
     const token = localStorage.getItem("token");
     try {
+      console.log("here")
       await axios.delete(`http://localhost:5000/api/transactions/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -73,7 +114,8 @@ function Transaction() {
     return new Date(isoDate).toLocaleDateString(undefined, options);
   };
 
-  const uniqueCategories = [
+  // Compute from all fetched transactions, not filtered ones
+  const allCategories = [
     "All",
     ...new Set(transactions.map((txn) => txn.category)),
   ];
@@ -83,12 +125,12 @@ function Transaction() {
       selectedCategory === "All" || txn.category === selectedCategory;
     const matchSearch = txn.description
       .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+      .includes(debouncedSearch.toLowerCase());
     return matchCategory && matchSearch;
   });
 
   return (
-    <div className="container mt-4">
+    <div className="container mt-4 pb-5">
       <h2 className="mb-3">Transaction History</h2>
 
       {error && <div className="alert alert-danger">{error}</div>}
@@ -117,7 +159,7 @@ function Transaction() {
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
-              {uniqueCategories.map((cat) => (
+              {categories.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
@@ -174,7 +216,10 @@ function Transaction() {
                 </button>
                 <button
                   className="btn btn-outline-danger btn-sm"
-                  onClick={() => handleDelete(txn.id)}
+                  onClick={() => {
+                    setDeleteId(txn.id);
+                    setShowConfirmModal(true);
+                  }}
                 >
                   <Trash />
                 </button>
@@ -182,7 +227,39 @@ function Transaction() {
             </div>
           </div>
         ))}
+
+        {/* Show message if no results */}
+        {transactions.length === 0 && debouncedSearch && !loading && (
+          <div className="text-center text-muted my-4">
+            No transactions found.
+          </div>
+        )}
       </div>
+
+      {/* Pagination - hidden if no results */}
+      {filteredTransactions.length > 0 && (
+        <div className="d-flex justify-content-center align-items-center mt-4 gap-3">
+          <button
+            className="btn btn-outline-primary"
+            onClick={() => setPageNumber((prev) => Math.max(prev - 1, 1))}
+            disabled={pageNumber === 1}
+          >
+            Previous
+          </button>
+          <span>
+            Page {pageNumber} of {totalPages}
+          </span>
+          <button
+            className="btn btn-outline-primary"
+            onClick={() =>
+              setPageNumber((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={pageNumber === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {loading && (
         <div className="text-center my-3">
@@ -201,6 +278,18 @@ function Transaction() {
           setTransactions([]);
           fetchTransactions();
         }}
+      />
+      <ConfirmModal
+        show={showConfirmModal}
+        onHide={() => setShowConfirmModal(false)}
+        onConfirm={async () => {
+          if (deleteId !== null) {
+            await handleDelete(deleteId);
+          }
+          setShowConfirmModal(false);
+          setDeleteId(null);
+        }}
+        message="Are you sure you want to delete this transaction?"
       />
     </div>
   );
