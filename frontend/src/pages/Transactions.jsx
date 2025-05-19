@@ -21,6 +21,7 @@ function Transaction() {
   const [showFilters, setShowFilters] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [firstLoad, setFirstLoad] = useState(true); // Track initial page load
 
   const fetchCategories = async () => {
     const token = localStorage.getItem("token");
@@ -79,9 +80,11 @@ function Transaction() {
       setTransactions(res.data.transactions);
       const total = res.data.total;
       setTotalPages(Math.ceil(total / limit));
+      setFirstLoad(false); // Mark that the first data load is complete
     } catch (err) {
       console.error(err);
       setError("Failed to load transactions.");
+      setFirstLoad(false);
     } finally {
       setLoading(false);
     }
@@ -90,7 +93,7 @@ function Transaction() {
   const handleDelete = async (id) => {
     const token = localStorage.getItem("token");
     try {
-      console.log("here")
+      console.log("here");
       await axios.delete(`http://localhost:5000/api/transactions/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -114,12 +117,18 @@ function Transaction() {
     return new Date(isoDate).toLocaleDateString(undefined, options);
   };
 
-  // Compute from all fetched transactions, not filtered ones
-  const allCategories = [
-    "All",
-    ...new Set(transactions.map((txn) => txn.category)),
-  ];
+  // Determine which empty state message to show
+  const getEmptyStateMessage = () => {
+    if (debouncedSearch) {
+      return "No transactions found for this search.";
+    } else if (selectedCategory !== "All") {
+      return `No transactions found in the "${selectedCategory}" category.`;
+    } else {
+      return "You haven't added any transactions yet.";
+    }
+  };
 
+  // Filter transactions based on selected category and search term
   const filteredTransactions = transactions.filter((txn) => {
     const matchCategory =
       selectedCategory === "All" || txn.category === selectedCategory;
@@ -179,65 +188,71 @@ function Transaction() {
       </div>
 
       {/* Transaction List */}
-      <div className="list-group">
-        {filteredTransactions.map((txn) => (
-          <div
-            key={txn.id}
-            className="list-group-item d-flex align-items-start justify-content-between"
-          >
-            <div className="d-flex align-items-start">
-              <div className="me-3 mt-1">
-                <CurrencyDollar className="fs-4" />
+      {!loading && filteredTransactions.length > 0 ? (
+        <div className="list-group">
+          {filteredTransactions.map((txn) => (
+            <div
+              key={txn.id}
+              className="list-group-item d-flex align-items-start justify-content-between"
+            >
+              <div className="d-flex align-items-start">
+                <div className="me-3 mt-1">
+                  <CurrencyDollar className="fs-4" />
+                </div>
+                <div>
+                  <div className="fw-bold">{txn.category}</div>
+                  <div className="text-muted">{txn.description}</div>
+                  <div className="text-muted">
+                    {formatDate(txn.transaction_date)}
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="fw-bold">{txn.category}</div>
-                <div className="text-muted">{txn.description}</div>
-                <div className="text-muted">
-                  {formatDate(txn.transaction_date)}
+
+              <div className="d-flex flex-column align-items-end">
+                <div
+                  className={`fw-bold mb-2 ${
+                    txn.type === "income" ? "text-success" : "text-danger"
+                  }`}
+                >
+                  {txn.amount}€
+                </div>
+
+                <div className="d-flex gap-2">
+                  <button
+                    className="btn btn-outline-primary btn-sm"
+                    onClick={() => handleEditClick(txn)}
+                  >
+                    <Pencil />
+                  </button>
+                  <button
+                    className="btn btn-outline-danger btn-sm"
+                    onClick={() => {
+                      setDeleteId(txn.id);
+                      setShowConfirmModal(true);
+                    }}
+                  >
+                    <Trash />
+                  </button>
                 </div>
               </div>
             </div>
-
-            <div className="d-flex flex-column align-items-end">
-              <div
-                className={`fw-bold mb-2 ${
-                  txn.type === "income" ? "text-success" : "text-danger"
-                }`}
-              >
-                {txn.amount}€
-              </div>
-
-              <div className="d-flex gap-2">
-                <button
-                  className="btn btn-outline-primary btn-sm"
-                  onClick={() => handleEditClick(txn)}
-                >
-                  <Pencil />
-                </button>
-                <button
-                  className="btn btn-outline-danger btn-sm"
-                  onClick={() => {
-                    setDeleteId(txn.id);
-                    setShowConfirmModal(true);
-                  }}
-                >
-                  <Trash />
-                </button>
-              </div>
-            </div>
+          ))}
+        </div>
+      ) : (
+        !loading && !firstLoad && (
+          <div className="text-center py-5">
+            <h5 className="text-muted">{getEmptyStateMessage()}</h5>
+            {selectedCategory === "All" && !debouncedSearch && (
+              <p className="mt-3">
+                Add your first transaction to start tracking your finances.
+              </p>
+            )}
           </div>
-        ))}
-
-        {/* Show message if no results */}
-        {transactions.length === 0 && debouncedSearch && !loading && (
-          <div className="text-center text-muted my-4">
-            No transactions found.
-          </div>
-        )}
-      </div>
+        )
+      )}
 
       {/* Pagination - hidden if no results */}
-      {filteredTransactions.length > 0 && (
+      {filteredTransactions.length > 0 && totalPages >1  && (
         <div className="d-flex justify-content-center align-items-center mt-4 gap-3">
           <button
             className="btn btn-outline-primary"
