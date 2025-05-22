@@ -7,6 +7,7 @@ require('dotenv').config();
 const userRoutes = require('./routes/users');
 const transactionRoutes = require('./routes/transactions');
 const categoryRoutes = require('./routes/categories');
+const investmentsRoutes = require('./routes/investments')
 
 const app = express();
 const PORT = 5000;
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/investments', investmentsRoutes)
 
 
 

@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  useLocation,
+  useNavigate,
+  Navigate,
+} from "react-router-dom";
 
 // Pages
 import Login from "./pages/Login";
@@ -7,6 +13,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import AddTransaction from "./pages/AddTransaction";
+import Investments from "./pages/Investments";
+import InvestmentDetails from "./pages/InvestmentDetails";
 
 // Components
 import BottomNav from "./components/BottomNav";
@@ -78,6 +86,22 @@ function App() {
           element={
             <ProtectedRoute>
               <AddTransaction />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/investments"
+          element={
+            <ProtectedRoute>
+              <Investments />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/investments/:investmentId/details"
+          element={
+            <ProtectedRoute>
+              <InvestmentDetails />
             </ProtectedRoute>
           }
         />
