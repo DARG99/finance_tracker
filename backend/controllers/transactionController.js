@@ -3,13 +3,29 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const addTransaction = async (req, res) => {
-  const { amount, type, description, transaction_date, categoryid } = req.body;
+  const {
+    amount,
+    type,
+    description,
+    transaction_date,
+    categoryid,
+    funding_source_id,
+  } = req.body;
   const userId = req.user.id;
 
   try {
     await db.query(
-      "INSERT INTO transactions (user_id, amount, type, description, transaction_date, category_id) VALUES ($1,$2,$3,$4,$5,$6)",
-      [userId, amount, type, description, transaction_date, categoryid]
+      `INSERT INTO transactions (user_id, amount, type, description, transaction_date, category_id, funding_source_id)
+   VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [
+        userId,
+        amount,
+        type,
+        description,
+        transaction_date,
+        categoryid,
+        funding_source_id,
+      ]
     );
 
     res.status(201).json({ message: "Transaction added successfully" });
@@ -51,15 +67,18 @@ const getTransactions = async (req, res) => {
     // Query for paginated results
     const transactionsQuery = `
       SELECT 
-        t.id,
-        t.amount::float,
-        t.type,
-        t.description,
-        t.transaction_date,
-        t.category_id,
-        c.name AS category
-      FROM transactions t
-      JOIN categories c ON t.category_id = c.id
+  t.id,
+  t.amount::float,
+  t.type,
+  t.description,
+  t.transaction_date,
+  t.category_id,
+  c.name AS category,
+  fs.id AS funding_source_id,
+  fs.name AS funding_source
+FROM transactions t
+JOIN categories c ON t.category_id = c.id
+LEFT JOIN funding_sources fs ON t.funding_source_id = fs.id
       ${whereClause}
       ORDER BY t.transaction_date DESC, t.id DESC
       LIMIT $${++paramIndex}
@@ -98,21 +117,29 @@ const getTransactions = async (req, res) => {
 const updateTransaction = async (req, res) => {
   const userId = req.user.id;
   const transactionId = req.params.id;
-  const { amount, type, description, transaction_date, categoryid } = req.body;
+  const {
+    amount,
+    type,
+    description,
+    transaction_date,
+    categoryid,
+    funding_source_id,
+  } = req.body;
 
   try {
     console.log("Received update data:", req.body);
 
     const result = await db.query(
       `UPDATE transactions
-        SET amount = $1, type = $2, description = $3, transaction_date = $4, category_id = $5
-       WHERE id = $6 AND user_id = $7`,
+   SET amount = $1, type = $2, description = $3, transaction_date = $4, category_id = $5, funding_source_id = $6
+   WHERE id = $7 AND user_id = $8`,
       [
         amount,
         type,
         description,
         transaction_date,
         categoryid,
+        funding_source_id,
         transactionId,
         userId,
       ]

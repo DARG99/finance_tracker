@@ -9,18 +9,52 @@ function AddTransaction() {
     date: today,
     category: "",
     description: "",
+    funding_source: "",
   });
 
   const [categories, setCategories] = useState([]);
+  const [fundingSources, setFundingSources] = useState([]);
+
+  useEffect(() => {
+    const fetchFundingSources = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        const res = await fetch("http://192.168.1.85:5000/api/fundingsources", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        console.log("Raw response:", res);
+        const data = await res.json();
+        console.log("Parsed data:", data);
+
+        if (Array.isArray(data)) {
+          setFundingSources(data);
+        } else {
+          console.error("Data is not an array:", data);
+          setFundingSources([]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch funding sources:", err);
+        setFundingSources([]);
+      }
+    };
+
+    fetchFundingSources();
+  }, []);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await fetch("http://192.168.1.85:5000/api/categories");
+        if (!res.ok) throw new Error("Failed to fetch categories");
         const data = await res.json();
-        setCategories(data);
+        setCategories(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Failed to fetch categories", err);
+        setCategories([]);
       }
     };
 
@@ -30,16 +64,13 @@ function AddTransaction() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => {
-      // If type is changed, reset the category
       if (name === "type") {
         return {
           ...prev,
-          [name]: value,
-          category: "", // Reset category when type changes
+          type: value,
+          category: "", // Reset category on type change
         };
       }
-
-      // For other fields, just update normally
       return {
         ...prev,
         [name]: value,
@@ -50,8 +81,7 @@ function AddTransaction() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const token = localStorage.getItem("token"); // Assumes you store it like this
-
+    const token = localStorage.getItem("token");
     if (!token) {
       alert("User not authenticated.");
       return;
@@ -60,20 +90,26 @@ function AddTransaction() {
     const transactionData = {
       amount: parseFloat(formData.amount),
       type: formData.type,
-      description: formData.description, // Add a description input if needed
+      description: formData.description,
       transaction_date: formData.date,
-      categoryid: parseInt(formData.category), // Assuming it's an integer
+      categoryid: parseInt(formData.category),
+      funding_source_id: formData.funding_source
+        ? parseInt(formData.funding_source)
+        : null,
     };
 
     try {
-      const res = await fetch("http://localhost:5000/api/transactions/addtransaction", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, 
-        },
-        body: JSON.stringify(transactionData),
-      });
+      const res = await fetch(
+        "http://localhost:5000/api/transactions/addtransaction",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(transactionData),
+        }
+      );
 
       const result = await res.json();
 
@@ -87,6 +123,8 @@ function AddTransaction() {
         type: "expense",
         date: new Date().toISOString().split("T")[0],
         category: "",
+        description: "",
+        funding_source: "",
       });
     } catch (err) {
       console.error(err);
@@ -94,7 +132,6 @@ function AddTransaction() {
     }
   };
 
-  // Filter categories based on the current transaction type
   const filteredCategories = categories.filter(
     (cat) => cat.type === formData.type
   );
@@ -152,6 +189,20 @@ function AddTransaction() {
             </label>
           </div>
         </div>
+        <div className="form-check form-check-inline">
+          <input
+            type="radio"
+            name="type"
+            value="transfer"
+            checked={formData.type === "transfer"}
+            onChange={handleChange}
+            className="form-check-input"
+            id="typeTransfer"
+          />
+          <label className="form-check-label" htmlFor="typeTransfer">
+            Transfer
+          </label>
+        </div>
 
         <div className="mb-3">
           <label htmlFor="date" className="form-label">
@@ -165,6 +216,27 @@ function AddTransaction() {
             className="form-control"
             required
           />
+        </div>
+
+        <div className="mb-3">
+          <label htmlFor="funding_source" className="form-label">
+            Funding Source
+          </label>
+          <select
+            name="funding_source"
+            value={formData.funding_source}
+            onChange={handleChange}
+            className="form-select"
+            required
+          >
+            <option value="">-- Select Funding Source --</option>
+            {Array.isArray(fundingSources) &&
+              fundingSources.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.name}
+                </option>
+              ))}
+          </select>
         </div>
 
         <div className="mb-3">
@@ -186,6 +258,7 @@ function AddTransaction() {
             ))}
           </select>
         </div>
+
         <div className="mb-3">
           <label htmlFor="description" className="form-label">
             Description
@@ -193,7 +266,7 @@ function AddTransaction() {
           <input
             type="text"
             name="description"
-            value={formData.description || ""}
+            value={formData.description}
             onChange={handleChange}
             className="form-control"
             placeholder="Optional description"

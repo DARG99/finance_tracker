@@ -77,6 +77,8 @@ function Transaction() {
         },
       });
 
+      
+
       setTransactions(res.data.transactions);
       const total = res.data.total;
       setTotalPages(Math.ceil(total / limit));
@@ -201,7 +203,14 @@ function Transaction() {
                 </div>
                 <div>
                   <div className="fw-bold">{txn.category}</div>
-                  <div className="text-muted">{txn.description}</div>
+                  <div className="text-muted">
+                    {txn.description}
+                    {txn.funding_source && (
+                      <span className="ms-2 d-block d-sm-inline text-secondary">
+                        - Funding Source: {txn.funding_source}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-muted">
                     {formatDate(txn.transaction_date)}
                   </div>
@@ -239,7 +248,8 @@ function Transaction() {
           ))}
         </div>
       ) : (
-        !loading && !firstLoad && (
+        !loading &&
+        !firstLoad && (
           <div className="text-center py-5">
             <h5 className="text-muted">{getEmptyStateMessage()}</h5>
             {selectedCategory === "All" && !debouncedSearch && (
@@ -252,7 +262,7 @@ function Transaction() {
       )}
 
       {/* Pagination - hidden if no results */}
-      {filteredTransactions.length > 0 && totalPages >1  && (
+      {filteredTransactions.length > 0 && totalPages > 1 && (
         <div className="d-flex justify-content-center align-items-center mt-4 gap-3">
           <button
             className="btn btn-outline-primary"
