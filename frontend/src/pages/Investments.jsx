@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import InvestmentCard from "../components/InvestmentCard";
 import { Modal, Button, Form } from "react-bootstrap";
 import axios from "axios";
+import config from "../config";
 
 export default function Investments() {
   const [investments, setInvestments] = useState([]);
@@ -23,12 +24,15 @@ export default function Investments() {
   const fetchInvestments = async () => {
     try {
       const token = localStorage.getItem("token"); // get token
-      const res = await axios.get("http://192.168.1.85:5000/api/investments", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-     
+      const res = await axios.get(
+        `${config.apiUrl}/api/investments`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
       setInvestments(res.data);
     } catch (err) {
       console.error("Error fetching investments", err);
@@ -47,7 +51,7 @@ export default function Investments() {
 
       // Check if ticker exists - no auth needed here? Add token if required
       const check = await axios.get(
-        `http://192.168.1.85:5000/api/investments/price/${ticker}`,
+        `${config.apiUrl}/api/investments/price/${ticker}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -61,7 +65,7 @@ export default function Investments() {
       }
 
       await axios.post(
-        "http://192.168.1.85:5000/api/investments",
+        `${config.apiUrl}/api/investments`,
         { name, ticker },
         {
           headers: {

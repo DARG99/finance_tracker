@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router";
 import { Form, Button, Container, Row, Col, Alert } from "react-bootstrap";
+import config from "../config";
 
 function Login() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ function Login() {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://192.168.1.85:5000/api/users/login",
+        `${config.apiUrl}/api/users/login`,
         values,
         {
           headers: {
@@ -43,7 +44,10 @@ function Login() {
   };
 
   return (
-    <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
+    <Container
+      className="d-flex justify-content-center align-items-center"
+      style={{ minHeight: "100vh" }}
+    >
       <Row className="w-100">
         <Col xs={12} md={6} className="mx-auto">
           <h2 className="text-center mb-4">Login</h2>

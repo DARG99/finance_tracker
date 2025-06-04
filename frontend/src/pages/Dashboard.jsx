@@ -12,6 +12,7 @@ import {
   Line,
   ResponsiveContainer,
 } from "recharts";
+import config from "../config";
 
 function DashboardPage() {
   const [monthlyData, setMonthlyData] = useState([]);
@@ -30,7 +31,7 @@ function DashboardPage() {
   const fetchMonthlyDashboard = async (year) => {
     try {
       const res = await axios.get(
-        `http://192.168.1.85:5000/api/dashboard/monthly?year=${year}`,
+        `${config.apiUrl}/dashboard/monthly?year=${year}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -45,7 +46,7 @@ function DashboardPage() {
   const fetchYearlyDashboard = async () => {
     try {
       const res = await axios.get(
-        "http://192.168.1.85:5000/api/dashboard/yearly",
+        `${config.apiUrl}/dashboard/yearly`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

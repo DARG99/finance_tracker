@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import EditInvestmentTransactionModal from "../components/EditInvestmentTransactionModal";
 import AddInvestmentTransactionModal from "../components/AddInvestmentTransactionModal";
 import ConfirmModal from "../components/ConfirmModal";
+import config from "../config";
 
 function InvestmentDetailsPage() {
   const { investmentId } = useParams();
@@ -44,7 +45,7 @@ function InvestmentDetailsPage() {
     const token = localStorage.getItem("token");
     try {
       const res = await axios.get(
-        `http://192.168.1.85:5000/api/investments/${investmentId}/details`,
+        `${config.apiUrl}/api/investments/${investmentId}/details`,
         {
           params: {
             page,
@@ -93,7 +94,7 @@ function InvestmentDetailsPage() {
     const token = localStorage.getItem("token");
     try {
       await axios.delete(
-        `http://192.168.1.85:5000/api/investments/transactions/${id}`,
+        `${config.apiUrl}/investments/transactions/${id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

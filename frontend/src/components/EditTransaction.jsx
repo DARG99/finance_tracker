@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Alert, Form } from "react-bootstrap";
 import axios from "axios";
+import config from "../config";
 
 function EditTransactionModal({ show, onHide, transaction, onSave }) {
   const [formData, setFormData] = useState({
@@ -13,32 +14,31 @@ function EditTransactionModal({ show, onHide, transaction, onSave }) {
 
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState("");
-  
+
   // Fix for the date timezone issue
   const fixDateOffset = (dateString) => {
     if (!dateString) return "";
-    
+
     // Parse the date and make sure it doesn't shift days
-    const parts = dateString.split('T')[0].split('-');
+    const parts = dateString.split("T")[0].split("-");
     if (parts.length !== 3) return dateString;
-    
+
     // Add one day to compensate for timezone offset
     const date = new Date(parts[0], parts[1] - 1, parseInt(parts[2]) + 1);
-    
+
     // Format back to YYYY-MM-DD
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
     return `${year}-${month}-${day}`;
   };
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch("http://192.168.1.85:5000/api/categories");
-        const data = await res.json();
-        setCategories(data);
+        const res = await axios.get(`${config.apiUrl}/api/categories`);
+        setCategories(res.data);
       } catch (err) {
         console.error("Failed to fetch categories", err);
       }
@@ -52,7 +52,7 @@ function EditTransactionModal({ show, onHide, transaction, onSave }) {
       const fixedDate = fixDateOffset(transaction.transaction_date);
       console.log("Original date:", transaction.transaction_date);
       console.log("Fixed date:", fixedDate);
-      
+
       setFormData({
         amount: transaction.amount || "",
         description: transaction.description || "",
@@ -83,7 +83,6 @@ function EditTransactionModal({ show, onHide, transaction, onSave }) {
     try {
       const token = localStorage.getItem("token");
 
-      // We don't need to adjust the date when sending back to the server
       console.log("Sending transaction data:", {
         amount,
         description,
@@ -91,9 +90,9 @@ function EditTransactionModal({ show, onHide, transaction, onSave }) {
         transaction_date,
         type,
       });
-      
+
       const res = await axios.put(
-        `http://192.168.1.85:5000/api/transactions/${transaction.id}`,
+        `${config.apiUrl}/api/transactions/${transaction.id}`,
         {
           amount,
           description,

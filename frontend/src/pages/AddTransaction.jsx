@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import config from "../config";
 
 function AddTransaction() {
   const today = new Date().toISOString().split("T")[0];
@@ -20,7 +21,7 @@ function AddTransaction() {
       try {
         const token = localStorage.getItem("token");
 
-        const res = await fetch("http://192.168.1.85:5000/api/fundingsources", {
+        const res = await fetch(`${config.apiUrl}/api/fundingsources`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -48,7 +49,7 @@ function AddTransaction() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch("http://192.168.1.85:5000/api/categories");
+        const res = await fetch(`${config.apiUrl}/api/categories`);
         if (!res.ok) throw new Error("Failed to fetch categories");
         const data = await res.json();
         setCategories(Array.isArray(data) ? data : []);
@@ -100,7 +101,7 @@ function AddTransaction() {
 
     try {
       const res = await fetch(
-        "http://localhost:5000/api/transactions/addtransaction",
+        `${config.apiUrl}/api/transactions/addtransaction`,
         {
           method: "POST",
           headers: {

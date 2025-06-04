@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router";
 import { Container, Row, Col, Form, Button, Alert } from "react-bootstrap";
+import config from "../config";
 
 function Register() {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ function Register() {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/users/register",
+        `${config.apiUrl}/users/register`,
         values,
         {
           headers: {
@@ -46,13 +47,20 @@ function Register() {
   };
 
   return (
-    <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
+    <Container
+      className="d-flex justify-content-center align-items-center"
+      style={{ minHeight: "100vh" }}
+    >
       <Row className="w-100">
         <Col xs={12} md={6} className="mx-auto">
           <h2 className="text-center mb-4">Register</h2>
 
           {error && <Alert variant="danger">{error}</Alert>}
-          {success && <Alert variant="success">Registration successful! Redirecting...</Alert>}
+          {success && (
+            <Alert variant="success">
+              Registration successful! Redirecting...
+            </Alert>
+          )}
 
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3" controlId="formUsername">

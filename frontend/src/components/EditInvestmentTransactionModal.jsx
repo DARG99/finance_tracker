@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Form } from "react-bootstrap";
 import axios from "axios";
+import config from "../config";
 
 function EditInvestmentTransactionModal({
   show,
@@ -38,7 +39,7 @@ function EditInvestmentTransactionModal({
     try {
       setSaving(true);
       await axios.put(
-        `http://192.168.1.85:5000/api/investments/${investmentId}/transactions/${transaction.id}`,
+        `${config.apiUrl}/investments/${investmentId}/transactions/${transaction.id}`,
         payload,
         {
           headers: {

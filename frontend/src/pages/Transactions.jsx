@@ -4,6 +4,7 @@ import { Spinner } from "react-bootstrap";
 import { CurrencyDollar, Pencil, Trash, Funnel } from "react-bootstrap-icons";
 import EditTransactionModal from "../components/EditTransaction";
 import ConfirmModal from "../components/ConfirmModal";
+import config from "../config";
 
 function Transaction() {
   const [transactions, setTransactions] = useState([]);
@@ -26,7 +27,7 @@ function Transaction() {
   const fetchCategories = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await axios.get("http://192.168.1.85:5000/api/categories", {
+      const res = await axios.get(`${config.apiUrl}/api/categories`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -65,7 +66,7 @@ function Transaction() {
     const token = localStorage.getItem("token");
 
     try {
-      const res = await axios.get("http://192.168.1.85:5000/api/transactions", {
+      const res = await axios.get(`${config.apiUrl}/api/transactions`, {
         params: {
           page: pageNumber,
           limit,
@@ -77,12 +78,10 @@ function Transaction() {
         },
       });
 
-      
-
       setTransactions(res.data.transactions);
       const total = res.data.total;
       setTotalPages(Math.ceil(total / limit));
-      setFirstLoad(false); // Mark that the first data load is complete
+      setFirstLoad(false);
     } catch (err) {
       console.error(err);
       setError("Failed to load transactions.");
@@ -96,7 +95,7 @@ function Transaction() {
     const token = localStorage.getItem("token");
     try {
       console.log("here");
-      await axios.delete(`http://localhost:5000/api/transactions/${id}`, {
+      await axios.delete(`${config.apiUrl}/api/transactions/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -220,7 +219,11 @@ function Transaction() {
               <div className="d-flex flex-column align-items-end">
                 <div
                   className={`fw-bold mb-2 ${
-                    txn.type === "income" ? "text-success" : "text-danger"
+                    txn.type === "income"
+                      ? "text-success"
+                      : txn.type === "expense"
+                      ? "text-danger"
+                      : "text-warning"
                   }`}
                 >
                   {txn.amount}€

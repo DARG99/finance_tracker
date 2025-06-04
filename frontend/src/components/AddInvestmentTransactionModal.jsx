@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import { Modal, Button, Form } from "react-bootstrap";
 import axios from "axios";
+import config from "../config";
+
 
 function AddInvestmentTransactionModal({ show, onHide, investmentId, onSave }) {
   const [date, setDate] = useState("");
@@ -25,7 +27,7 @@ function AddInvestmentTransactionModal({ show, onHide, investmentId, onSave }) {
     try {
       setSaving(true);
       await axios.post(
-        `http://192.168.1.85:5000/api/investments/${investmentId}/transactions`,
+        `${config.apiUrl}/investments/${investmentId}/transactions`,
         payload,
         {
           headers: {
