@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
   BarChart,
@@ -8,17 +8,18 @@ import {
   Tooltip,
   Legend,
   CartesianGrid,
-  LineChart,
-  Line,
   ResponsiveContainer,
 } from "recharts";
+import { Accordion, Card } from "react-bootstrap";
 import config from "../config";
 
 function DashboardPage() {
   const [monthlyData, setMonthlyData] = useState([]);
   const [yearlyData, setYearlyData] = useState([]);
-  const [investmentsData, setInvestmentsData] = useState([]);
-
+  const [transferCategories, setTransferCategories] = useState([]);
+  const [monthlyTotals, setMonthlyTotals] = useState([]);
+  const [yearlyTotals, setYearlyTotals] = useState({ total_income: 0, total_expenses: 0 });
+  const [viewMode, setViewMode] = useState("monthly"); // "monthly" or "yearly"
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -27,71 +28,49 @@ function DashboardPage() {
 
   const token = localStorage.getItem("token");
 
-  const fetchMonthlyDashboard = async (year) => {
+  const fetchMonthlyDashboard = useCallback(async (year) => {
     try {
       const res = await axios.get(
-        `${config.apiUrl}/dashboard/monthly?year=${year}`,
+        `${config.apiUrl}/api/dashboard/monthly?year=${year}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      console.log("Monthly data response:", res.data);
-      setMonthlyData(Array.isArray(res.data) ? res.data : []);
+      setMonthlyData(res.data.monthly || []);
+      setMonthlyTotals(res.data.monthlyTotals || []);
+      setYearlyTotals(res.data.yearlyTotal || { total_income: 0, total_expenses: 0 });
     } catch (err) {
       console.error("Monthly dashboard fetch error:", err);
       setMonthlyData([]);
       setError("Failed to load monthly dashboard.");
     }
-  };
+  }, [token]);
 
-  const fetchYearlyDashboard = async () => {
+  const fetchYearlyDashboard = useCallback(async () => {
     try {
-      const res = await axios.get(`${config.apiUrl}/dashboard/yearly`, {
+      const res = await axios.get(`${config.apiUrl}/api/dashboard/yearly`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("Yearly data response:", res.data);
-      setYearlyData(Array.isArray(res.data) ? res.data : []);
+      setYearlyData(res.data.yearly || []);
+      setYearlyTotals(res.data.total || { total_income: 0, total_expenses: 0 });
     } catch (err) {
       console.error("Yearly dashboard fetch error:", err);
       setYearlyData([]);
       setError("Failed to load yearly dashboard.");
     }
-  };
+  }, [token]);
 
-  // If you later enable this, apply the same Array.isArray check
-  /*
-  const fetchInvestmentsSummary = async () => {
+  const fetchTransferCategories = useCallback(async () => {
     try {
-      const res = await axios.get(`${config.apiUrl}/dashboard/investments-summary`, {
+      const res = await axios.get(`${config.apiUrl}/api/dashboard/transfer-categories`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      const data = Array.isArray(res.data)
-        ? res.data.map((inv) => {
-            const gainLossPercent = inv.currentprice
-              ? ((inv.currentprice * (inv.amountinvested / inv.currentprice) -
-                  inv.amountinvested) /
-                  inv.amountinvested) *
-                100
-              : 0;
-
-            return {
-              ticker: inv.ticker,
-              amountInvested: inv.amountinvested,
-              gainLoss: inv.gainLoss,
-              gainLossPercent,
-            };
-          })
-        : [];
-
-      setInvestmentsData(data);
+      setTransferCategories(res.data || []);
     } catch (err) {
-      console.error("Investments summary fetch error:", err);
-      setInvestmentsData([]);
-      setError("Failed to load investments summary.");
+      console.error("Transfer categories fetch error:", err);
+      setTransferCategories([]);
     }
-  };
-  */
+  }, [token]);
 
   useEffect(() => {
     setLoading(true);
@@ -100,17 +79,17 @@ function DashboardPage() {
     Promise.all([
       fetchMonthlyDashboard(selectedYear),
       fetchYearlyDashboard(),
-      // fetchInvestmentsSummary()
+      fetchTransferCategories(),
     ]).finally(() => setLoading(false));
-  }, [selectedYear]);
+  }, [selectedYear, fetchMonthlyDashboard, fetchYearlyDashboard, fetchTransferCategories]);
 
   const handleYearChange = (e) => {
     setSelectedYear(parseInt(e.target.value));
   };
 
-  const safeMonthlyData = Array.isArray(monthlyData) ? monthlyData : [];
-  const safeYearlyData = Array.isArray(yearlyData) ? yearlyData : [];
-  const safeInvestmentsData = Array.isArray(investmentsData) ? investmentsData : [];
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+  };
 
   if (loading) {
     return <div className="text-center mt-5">Loading dashboard...</div>;
@@ -121,76 +100,215 @@ function DashboardPage() {
   }
 
   return (
-    <div className="container mt-4">
+    <div className="container mt-4 pb-5">
       <h2>Dashboard</h2>
 
-      {/* Year selector */}
-      <div className="mb-4">
-        <label htmlFor="yearSelect" className="form-label">
-          Select Year for Monthly View:
-        </label>
-        <select
-          id="yearSelect"
-          className="form-select w-auto"
-          value={selectedYear}
-          onChange={handleYearChange}
-        >
-          {[...Array(10)].map((_, i) => {
-            const year = currentYear - i;
-            return (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            );
-          })}
-        </select>
+      {/* Total Summary */}
+      <div className="row mb-4">
+        <div className="col-md-6">
+          <div className="card bg-success text-white">
+            <div className="card-body">
+              <h5 className="card-title">Total Income (All Time)</h5>
+              <p className="card-text h3">{yearlyTotals.total_income.toFixed(2)} €</p>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-6">
+          <div className="card bg-danger text-white">
+            <div className="card-body">
+              <h5 className="card-title">Total Expenses (All Time)</h5>
+              <p className="card-text h3">{yearlyTotals.total_expenses.toFixed(2)} €</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Monthly Chart */}
-      <h4>Monthly Income & Expenses ({selectedYear})</h4>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={safeMonthlyData} margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          <Bar dataKey="income" fill="#4caf50" name="Income" />
-          <Bar dataKey="expenses" fill="#f44336" name="Expenses" />
-        </BarChart>
-      </ResponsiveContainer>
+      {/* View Mode Selector */}
+      <div className="mb-4">
+        <div className="btn-group" role="group">
+          <button
+            type="button"
+            className={`btn ${viewMode === "monthly" ? "btn-primary" : "btn-outline-primary"}`}
+            onClick={() => handleViewModeChange("monthly")}
+          >
+            Monthly View
+          </button>
+          <button
+            type="button"
+            className={`btn ${viewMode === "yearly" ? "btn-primary" : "btn-outline-primary"}`}
+            onClick={() => handleViewModeChange("yearly")}
+          >
+            Yearly View
+          </button>
+        </div>
+      </div>
 
-      {/* Yearly Chart */}
-      <h4 className="mt-5">Yearly Income & Expenses</h4>
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={safeYearlyData} margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="year" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          <Line type="monotone" dataKey="income" stroke="#4caf50" name="Income" />
-          <Line type="monotone" dataKey="expenses" stroke="#f44336" name="Expenses" />
-        </LineChart>
-      </ResponsiveContainer>
+      {/* Income & Expenses Chart */}
+      <div className="card shadow-sm mb-4">
+        <div className="card-body">
+          <h4 className="card-title mb-4">
+            {viewMode === "monthly" ? "Monthly" : "Yearly"} Income & Expenses
+          </h4>
+          
+          {viewMode === "monthly" && (
+            <div className="mb-3">
+              <label htmlFor="yearSelect" className="form-label">
+                Select Year:
+              </label>
+              <select
+                id="yearSelect"
+                className="form-select w-auto"
+                value={selectedYear}
+                onChange={handleYearChange}
+              >
+                {[...Array(10)].map((_, i) => {
+                  const year = currentYear - i;
+                  return (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
 
-      {/* Investments Chart - optional */}
-      <h4 className="mt-5">Investments Summary (Total Invested & Gain/Loss)</h4>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart
-          data={safeInvestmentsData}
-          margin={{ top: 20, right: 30, bottom: 20, left: 0 }}
-          layout="vertical"
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" />
-          <YAxis dataKey="ticker" type="category" tick={{ fontSize: 14 }} width={80} />
-          <Tooltip formatter={(value) => value?.toFixed?.(2) ?? value} />
-          <Legend />
-          <Bar dataKey="amountInvested" fill="#2196f3" name="Total Invested (€)" />
-          <Bar dataKey="gainLoss" fill="#ff9800" name="Gain/Loss (€)" />
-        </BarChart>
-      </ResponsiveContainer>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart
+              data={viewMode === "monthly" ? monthlyData : yearlyData}
+              margin={{ top: 20, right: 30, bottom: 20, left: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey={viewMode === "monthly" ? "month" : "year"} />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="income" fill="#4caf50" name="Income" />
+              <Bar dataKey="expenses" fill="#f44336" name="Expenses" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Collapsible Sections */}
+      <Accordion>
+        {/* Monthly Totals */}
+        <Accordion.Item eventKey="0">
+          <Accordion.Header>Monthly Totals</Accordion.Header>
+          <Accordion.Body>
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th>Income</th>
+                    <th>Expenses</th>
+                    <th>Net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyTotals.map((month, index) => (
+                    <tr key={index}>
+                      <td>{month.month}</td>
+                      <td className="text-success">{month.total_income.toFixed(2)} €</td>
+                      <td className="text-danger">{month.total_expenses.toFixed(2)} €</td>
+                      <td className={month.total_income - month.total_expenses >= 0 ? "text-success" : "text-danger"}>
+                        {(month.total_income - month.total_expenses).toFixed(2)} €
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="fw-bold">
+                    <td>Total</td>
+                    <td className="text-success">{yearlyTotals.total_income.toFixed(2)} €</td>
+                    <td className="text-danger">{yearlyTotals.total_expenses.toFixed(2)} €</td>
+                    <td className={yearlyTotals.total_income - yearlyTotals.total_expenses >= 0 ? "text-success" : "text-danger"}>
+                      {(yearlyTotals.total_income - yearlyTotals.total_expenses).toFixed(2)} €
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </Accordion.Body>
+        </Accordion.Item>
+
+        {/* Yearly Totals */}
+        <Accordion.Item eventKey="1">
+          <Accordion.Header>Yearly Totals</Accordion.Header>
+          <Accordion.Body>
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Year</th>
+                    <th>Income</th>
+                    <th>Expenses</th>
+                    <th>Net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {yearlyData.map((year, index) => (
+                    <tr key={index}>
+                      <td>{year.year}</td>
+                      <td className="text-success">{year.income.toFixed(2)} €</td>
+                      <td className="text-danger">{year.expenses.toFixed(2)} €</td>
+                      <td className={year.income - year.expenses >= 0 ? "text-success" : "text-danger"}>
+                        {(year.income - year.expenses).toFixed(2)} €
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="fw-bold">
+                    <td>Total</td>
+                    <td className="text-success">{yearlyTotals.total_income.toFixed(2)} €</td>
+                    <td className="text-danger">{yearlyTotals.total_expenses.toFixed(2)} €</td>
+                    <td className={yearlyTotals.total_income - yearlyTotals.total_expenses >= 0 ? "text-success" : "text-danger"}>
+                      {(yearlyTotals.total_income - yearlyTotals.total_expenses).toFixed(2)} €
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </Accordion.Body>
+        </Accordion.Item>
+
+        {/* Transfer Categories */}
+        <Accordion.Item eventKey="2">
+          <Accordion.Header>Transfer Categories</Accordion.Header>
+          <Accordion.Body>
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Total Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transferCategories.map((category, index) => (
+                    <tr key={index}>
+                      <td>{category.category}</td>
+                      <td>{category.total_amount.toFixed(2)} €</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="fw-bold">
+                    <td>Total</td>
+                    <td>
+                      {transferCategories
+                        .reduce((sum, category) => sum + category.total_amount, 0)
+                        .toFixed(2)} €
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </Accordion.Body>
+        </Accordion.Item>
+      </Accordion>
     </div>
   );
 }

@@ -51,6 +51,7 @@ function EditInvestmentTransactionModal({
         }
       );
       onSave(); // trigger parent to refresh data
+      onHide();  // close modal
     } catch (err) {
       console.error("Failed to update investment transaction", err);
       alert("Failed to update transaction.");
