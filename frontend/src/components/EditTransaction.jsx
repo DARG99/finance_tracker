@@ -76,7 +76,7 @@ function EditTransactionModal({ show, onHide, transaction, onSave }) {
   const handleSave = async () => {
     const { amount, description, category, transaction_date, type } = formData;
 
-    if (!amount || !description || !category || !transaction_date || !type) {
+    if (!amount || !category || !transaction_date || !type) {
       return setError("All fields are required.");
     }
 

@@ -13,6 +13,7 @@ function EditInvestmentTransactionModal({
   const [date, setDate] = useState("");
   const [amountInvested, setAmountInvested] = useState("");
   const [pricePerUnit, setPricePerUnit] = useState("");
+  const [tax, setTax] = useState("0");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -20,6 +21,7 @@ function EditInvestmentTransactionModal({
       setDate(transaction.date?.slice(0, 10) || "");
       setAmountInvested(transaction.amount_invested);
       setPricePerUnit(transaction.price_per_unit);
+      setTax(transaction.tax || "0");
     }
   }, [transaction]);
 
@@ -34,12 +36,13 @@ function EditInvestmentTransactionModal({
       date,
       amount_invested: parseFloat(amountInvested),
       price_per_unit: parseFloat(pricePerUnit),
+      tax: parseFloat(tax) || 0,
     };
 
     try {
       setSaving(true);
       await axios.put(
-        `${config.apiUrl}/investments/${investmentId}/transactions/${transaction.id}`,
+        `${config.apiUrl}/api/investments/${investmentId}/transactions/${transaction.id}`,
         payload,
         {
           headers: {
@@ -87,6 +90,16 @@ function EditInvestmentTransactionModal({
               type="number"
               value={pricePerUnit}
               onChange={(e) => setPricePerUnit(e.target.value)}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Tax (€)</Form.Label>
+            <Form.Control
+              type="number"
+              value={tax}
+              onChange={(e) => setTax(e.target.value)}
+              placeholder="0"
             />
           </Form.Group>
         </Form>

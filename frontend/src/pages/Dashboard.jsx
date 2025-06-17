@@ -27,7 +27,6 @@ function DashboardPage() {
 
   const token = localStorage.getItem("token");
 
-  // Fetch monthly dashboard for selectedYear
   const fetchMonthlyDashboard = async (year) => {
     try {
       const res = await axios.get(
@@ -36,62 +35,64 @@ function DashboardPage() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      setMonthlyData(res.data);
+      console.log("Monthly data response:", res.data);
+      setMonthlyData(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
+      console.error("Monthly dashboard fetch error:", err);
+      setMonthlyData([]);
       setError("Failed to load monthly dashboard.");
     }
   };
 
-  // Fetch yearly dashboard
   const fetchYearlyDashboard = async () => {
     try {
-      const res = await axios.get(
-        `${config.apiUrl}/dashboard/yearly`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setYearlyData(res.data);
+      const res = await axios.get(`${config.apiUrl}/dashboard/yearly`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("Yearly data response:", res.data);
+      setYearlyData(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
+      console.error("Yearly dashboard fetch error:", err);
+      setYearlyData([]);
       setError("Failed to load yearly dashboard.");
     }
   };
 
-  // Fetch investments summary
-  /*const fetchInvestmentsSummary = async () => {
+  // If you later enable this, apply the same Array.isArray check
+  /*
+  const fetchInvestmentsSummary = async () => {
     try {
-      const res = await axios.get(
-        "http://192.168.1.85:5000/api/dashboard/investments-summary",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      // Map the API result to include gain/loss percentage for the chart
-      const data = res.data.map((inv) => {
-        const gainLossPercent = inv.currentprice
-          ? ((inv.currentprice * (inv.amountinvested / inv.currentprice) -
-              inv.amountinvested) /
-              inv.amountinvested) *
-            100
-          : 0;
-
-        return {
-          ticker: inv.ticker,
-          amountInvested: inv.amountinvested,
-          gainLoss: inv.gainLoss,
-          gainLossPercent,
-        };
+      const res = await axios.get(`${config.apiUrl}/dashboard/investments-summary`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+
+      const data = Array.isArray(res.data)
+        ? res.data.map((inv) => {
+            const gainLossPercent = inv.currentprice
+              ? ((inv.currentprice * (inv.amountinvested / inv.currentprice) -
+                  inv.amountinvested) /
+                  inv.amountinvested) *
+                100
+              : 0;
+
+            return {
+              ticker: inv.ticker,
+              amountInvested: inv.amountinvested,
+              gainLoss: inv.gainLoss,
+              gainLossPercent,
+            };
+          })
+        : [];
 
       setInvestmentsData(data);
     } catch (err) {
+      console.error("Investments summary fetch error:", err);
+      setInvestmentsData([]);
       setError("Failed to load investments summary.");
     }
   };
   */
 
-  // Fetch all data on load and when selectedYear changes
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -99,14 +100,17 @@ function DashboardPage() {
     Promise.all([
       fetchMonthlyDashboard(selectedYear),
       fetchYearlyDashboard(),
-      //fetchInvestmentsSummary(),
+      // fetchInvestmentsSummary()
     ]).finally(() => setLoading(false));
   }, [selectedYear]);
 
-  // Handle year select change
   const handleYearChange = (e) => {
     setSelectedYear(parseInt(e.target.value));
   };
+
+  const safeMonthlyData = Array.isArray(monthlyData) ? monthlyData : [];
+  const safeYearlyData = Array.isArray(yearlyData) ? yearlyData : [];
+  const safeInvestmentsData = Array.isArray(investmentsData) ? investmentsData : [];
 
   if (loading) {
     return <div className="text-center mt-5">Loading dashboard...</div>;
@@ -120,7 +124,7 @@ function DashboardPage() {
     <div className="container mt-4">
       <h2>Dashboard</h2>
 
-      {/* Year selector for monthly graph */}
+      {/* Year selector */}
       <div className="mb-4">
         <label htmlFor="yearSelect" className="form-label">
           Select Year for Monthly View:
@@ -131,7 +135,6 @@ function DashboardPage() {
           value={selectedYear}
           onChange={handleYearChange}
         >
-          {/* You can adjust the years range as needed */}
           {[...Array(10)].map((_, i) => {
             const year = currentYear - i;
             return (
@@ -143,13 +146,10 @@ function DashboardPage() {
         </select>
       </div>
 
-      {/* Monthly Income and Expenses Bar Chart */}
+      {/* Monthly Chart */}
       <h4>Monthly Income & Expenses ({selectedYear})</h4>
       <ResponsiveContainer width="100%" height={300}>
-        <BarChart
-          data={monthlyData}
-          margin={{ top: 20, right: 30, bottom: 20, left: 0 }}
-        >
+        <BarChart data={safeMonthlyData} margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="month" />
           <YAxis />
@@ -160,62 +160,35 @@ function DashboardPage() {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* Yearly Income and Expenses Line Chart */}
+      {/* Yearly Chart */}
       <h4 className="mt-5">Yearly Income & Expenses</h4>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart
-          data={yearlyData}
-          margin={{ top: 20, right: 30, bottom: 20, left: 0 }}
-        >
+        <LineChart data={safeYearlyData} margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="year" />
           <YAxis />
           <Tooltip />
           <Legend />
-          <Line
-            type="monotone"
-            dataKey="income"
-            stroke="#4caf50"
-            name="Income"
-          />
-          <Line
-            type="monotone"
-            dataKey="expenses"
-            stroke="#f44336"
-            name="Expenses"
-          />
+          <Line type="monotone" dataKey="income" stroke="#4caf50" name="Income" />
+          <Line type="monotone" dataKey="expenses" stroke="#f44336" name="Expenses" />
         </LineChart>
       </ResponsiveContainer>
 
-      {/* Investments Summary Bar Chart */}
+      {/* Investments Chart - optional */}
       <h4 className="mt-5">Investments Summary (Total Invested & Gain/Loss)</h4>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart
-          data={investmentsData}
+          data={safeInvestmentsData}
           margin={{ top: 20, right: 30, bottom: 20, left: 0 }}
           layout="vertical"
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis type="number" />
-          <YAxis
-            dataKey="ticker"
-            type="category"
-            tick={{ fontSize: 14 }}
-            width={80}
-          />
-          <Tooltip formatter={(value) => value.toFixed(2)} />
+          <YAxis dataKey="ticker" type="category" tick={{ fontSize: 14 }} width={80} />
+          <Tooltip formatter={(value) => value?.toFixed?.(2) ?? value} />
           <Legend />
-          <Bar
-            dataKey="amountInvested"
-            fill="#2196f3"
-            name="Total Invested (€)"
-          />
-          <Bar
-            dataKey="gainLoss"
-            fill="#ff9800"
-            name="Gain/Loss (€)"
-            // Use conditional coloring on positive/negative values is complex here, keeping default
-          />
+          <Bar dataKey="amountInvested" fill="#2196f3" name="Total Invested (€)" />
+          <Bar dataKey="gainLoss" fill="#ff9800" name="Gain/Loss (€)" />
         </BarChart>
       </ResponsiveContainer>
     </div>

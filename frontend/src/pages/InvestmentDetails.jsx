@@ -94,11 +94,9 @@ function InvestmentDetailsPage() {
     const token = localStorage.getItem("token");
     try {
       await axios.delete(
-        `${config.apiUrl}/investments/transactions/${id}`,
+        `${config.apiUrl}/api/investments/${investmentId}/transactions/${id}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
       fetchTransactions();
@@ -207,6 +205,9 @@ function InvestmentDetailsPage() {
                   <p className="mb-1">
                     <strong>Current Value:</strong>{" "}
                     {txn.current_value.toFixed(2)} €
+                  </p>
+                  <p className="mb-1">
+                    <strong>Tax:</strong> {txn.tax} €
                   </p>
                   <p className="mb-0">
                     <strong>Gain/Loss:</strong> {txn.gain_loss >= 0 ? "+" : ""}

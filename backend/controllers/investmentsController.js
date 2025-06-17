@@ -125,7 +125,7 @@ const getInvestmentDetails = async (req, res) => {
 
     // Fetch transactions
     const txRes = await db.query(
-      `SELECT id, date, amount_invested::NUMERIC, price_per_unit::NUMERIC
+      `SELECT id, date, amount_invested::NUMERIC, price_per_unit::NUMERIC, tax::NUMERIC
        FROM investments_transactions
        WHERE investments_id = $1${filterClause}
        ORDER BY date DESC
@@ -148,6 +148,7 @@ const getInvestmentDetails = async (req, res) => {
         date: tx.date,
         amount_invested: parseFloat(tx.amount_invested),
         price_per_unit: parseFloat(tx.price_per_unit),
+        tax: parseFloat(tx.tax || 0),
         units_bought,
         current_price: currentPrice,
         current_value,
@@ -180,7 +181,7 @@ const getInvestmentDetails = async (req, res) => {
 
 const updateTransaction = async (req, res) => {
   const { investmentId, transactionId } = req.params;
-  const { date, amount_invested, price_per_unit } = req.body;
+  const { date, amount_invested, price_per_unit, tax = 0 } = req.body;
   const userId = req.user.id; // from JWT token
 
   try {
@@ -199,10 +200,10 @@ const updateTransaction = async (req, res) => {
     // Now update the transaction
     const updateRes = await db.query(
       `UPDATE investments_transactions
-       SET date = $1, amount_invested = $2, price_per_unit = $3
-       WHERE id = $4 AND investments_id = $5
+       SET date = $1, amount_invested = $2, price_per_unit = $3, tax = $4
+       WHERE id = $5 AND investments_id = $6
        RETURNING *`,
-      [date, amount_invested, price_per_unit, transactionId, investmentId]
+      [date, amount_invested, price_per_unit, tax, transactionId, investmentId]
     );
 
     if (updateRes.rowCount === 0) {
@@ -221,7 +222,7 @@ const updateTransaction = async (req, res) => {
 const addInvestmentTransaction = async (req, res) => {
   const userId = req.user.id;
   const { investmentId } = req.params;
-  const { date, amount_invested, price_per_unit } = req.body;
+  const { date, amount_invested, price_per_unit, tax = 0 } = req.body;
 
   try {
     // Verify investment ownership
@@ -231,15 +232,17 @@ const addInvestmentTransaction = async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Investment not found or not authorized" });
+      return res
+        .status(404)
+        .json({ error: "Investment not found or not authorized" });
     }
 
     // Insert new transaction
     await db.query(
       `INSERT INTO investments_transactions 
-        (investments_id, date, amount_invested, price_per_unit)
-       VALUES ($1, $2, $3, $4)`,
-      [investmentId, date, amount_invested, price_per_unit]
+        (investments_id, date, amount_invested, price_per_unit, tax)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [investmentId, date, amount_invested, price_per_unit, tax]
     );
 
     res.status(201).json({ message: "Transaction added successfully" });
@@ -249,6 +252,40 @@ const addInvestmentTransaction = async (req, res) => {
   }
 };
 
+// Add this near your other controller functions
+const deleteInvestmentTransaction = async (req, res) => {
+  const { investmentId, transactionId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    // Check that the investment belongs to the current user
+    const checkOwnership = await db.query(
+      "SELECT * FROM investments WHERE id = $1 AND user_id = $2",
+      [investmentId, userId]
+    );
+
+    if (checkOwnership.rowCount === 0) {
+      return res
+        .status(403)
+        .json({ error: "Not authorized to delete this transaction" });
+    }
+
+    // Delete the transaction
+    const result = await db.query(
+      "DELETE FROM investments_transactions WHERE id = $1 AND investments_id = $2",
+      [transactionId, investmentId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    res.json({ message: "Transaction deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting investment transaction:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
 
 module.exports = {
   addInvestment,
@@ -256,5 +293,6 @@ module.exports = {
   getInvestments,
   getInvestmentDetails,
   updateTransaction,
-   addInvestmentTransaction,
+  addInvestmentTransaction,
+  deleteInvestmentTransaction,  
 };

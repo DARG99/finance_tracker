@@ -4,11 +4,11 @@ import { Modal, Button, Form } from "react-bootstrap";
 import axios from "axios";
 import config from "../config";
 
-
 function AddInvestmentTransactionModal({ show, onHide, investmentId, onSave }) {
   const [date, setDate] = useState("");
   const [amountInvested, setAmountInvested] = useState("");
   const [pricePerUnit, setPricePerUnit] = useState("");
+  const [tax, setTax] = useState("0");
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -22,12 +22,13 @@ function AddInvestmentTransactionModal({ show, onHide, investmentId, onSave }) {
       date,
       amount_invested: parseFloat(amountInvested),
       price_per_unit: parseFloat(pricePerUnit),
+      tax: parseFloat(tax) || 0,
     };
 
     try {
       setSaving(true);
       await axios.post(
-        `${config.apiUrl}/investments/${investmentId}/transactions`,
+        `${config.apiUrl}/api/investments/${investmentId}/transactions`,
         payload,
         {
           headers: {
@@ -39,6 +40,7 @@ function AddInvestmentTransactionModal({ show, onHide, investmentId, onSave }) {
       setDate("");
       setAmountInvested("");
       setPricePerUnit("");
+      setTax("0");
     } catch (err) {
       console.error("Failed to add investment transaction", err);
       alert("Failed to add transaction.");
@@ -78,6 +80,16 @@ function AddInvestmentTransactionModal({ show, onHide, investmentId, onSave }) {
               type="number"
               value={pricePerUnit}
               onChange={(e) => setPricePerUnit(e.target.value)}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Tax (€)</Form.Label>
+            <Form.Control
+              type="number"
+              value={tax}
+              onChange={(e) => setTax(e.target.value)}
+              placeholder="0"
             />
           </Form.Group>
         </Form>

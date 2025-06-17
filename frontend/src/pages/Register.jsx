@@ -24,7 +24,7 @@ function Register() {
     e.preventDefault();
     try {
       const response = await axios.post(
-        `${config.apiUrl}/users/register`,
+        `${config.apiUrl}/api/users/register`,
         values,
         {
           headers: {
