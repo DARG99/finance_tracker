@@ -23,6 +23,8 @@ function Transaction() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [firstLoad, setFirstLoad] = useState(true); // Track initial page load
+  const [selectedType, setSelectedType] = useState("all"); // Add this line for transaction type filter
+  const [allCategories, setAllCategories] = useState([]); // full list from backend
 
   const fetchCategories = async () => {
     const token = localStorage.getItem("token");
@@ -33,8 +35,7 @@ function Transaction() {
         },
       });
 
-      const allCategories = res.data.map((cat) => cat.name); // Adjust based on your actual data shape
-      setCategories(["All", ...allCategories]);
+      setAllCategories(res.data); // store full data
     } catch (err) {
       console.error("Failed to load categories", err);
     }
@@ -53,11 +54,22 @@ function Transaction() {
 
   useEffect(() => {
     setPageNumber(1);
-  }, [debouncedSearch, selectedCategory]);
+  }, [debouncedSearch, selectedCategory, selectedType]);
 
   useEffect(() => {
     fetchTransactions();
-  }, [pageNumber, debouncedSearch, selectedCategory]);
+  }, [pageNumber, debouncedSearch, selectedCategory, selectedType]);
+  useEffect(() => {
+    if (selectedType === "all") {
+      // show all categories
+      setCategories(["All", ...allCategories.map((cat) => cat.name)]);
+    } else {
+      const filtered = allCategories
+        .filter((cat) => cat.type === selectedType)
+        .map((cat) => cat.name);
+      setCategories(["All", ...filtered]);
+    }
+  }, [selectedType, allCategories]);
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -72,6 +84,7 @@ function Transaction() {
           limit,
           search: debouncedSearch,
           category: selectedCategory === "All" ? "" : selectedCategory,
+          type: selectedType === "all" ? "" : selectedType,
         },
         headers: {
           Authorization: `Bearer ${token}`,
@@ -136,7 +149,8 @@ function Transaction() {
     const matchSearch = txn.description
       .toLowerCase()
       .includes(debouncedSearch.toLowerCase());
-    return matchCategory && matchSearch;
+    const matchType = selectedType === "all" || txn.type === selectedType;
+    return matchCategory && matchSearch && matchType;
   });
 
   return (
@@ -163,7 +177,22 @@ function Transaction() {
         className={`mb-4 collapse ${showFilters ? "show" : ""}`}
       >
         <div className="row">
-          <div className="col-md-6 mb-2">
+          <div className="col-md-4 mb-2">
+            <select
+              className="form-select"
+              value={selectedType}
+              onChange={(e) => {
+                setSelectedType(e.target.value);
+                setSelectedCategory("All"); // Reset category when type changes
+              }}
+            >
+              <option value="all">All Types</option>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+              <option value="transfer">Transfer</option>
+            </select>
+          </div>
+          <div className="col-md-4 mb-2">
             <select
               className="form-select"
               value={selectedCategory}
@@ -176,7 +205,7 @@ function Transaction() {
               ))}
             </select>
           </div>
-          <div className="col-md-6 mb-2">
+          <div className="col-md-4 mb-2">
             <input
               type="text"
               className="form-control"

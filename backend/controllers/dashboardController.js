@@ -5,7 +5,7 @@ const getMonthlyDashboard = async (req, res) => {
   const year = parseInt(req.query.year);
 
   try {
-    // Get monthly breakdown
+    // Get monthly breakdown for selected year
     const monthlyResult = await db.query(
       `
       SELECT
@@ -21,19 +21,19 @@ const getMonthlyDashboard = async (req, res) => {
       [userId, year]
     );
 
-    // Get total for the year
-    const yearlyTotalResult = await db.query(
+    // Get all-time totals (removed year filter)
+    const allTimeTotalResult = await db.query(
       `
       SELECT
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END)::float AS total_income,
         SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END)::float AS total_expenses
       FROM transactions
-      WHERE user_id = $1 AND EXTRACT(YEAR FROM transaction_date) = $2
+      WHERE user_id = $1
     `,
-      [userId, year]
+      [userId]
     );
 
-    // Get monthly totals
+    // Get monthly totals for selected year
     const monthlyTotalsResult = await db.query(
       `
       SELECT
@@ -81,8 +81,8 @@ const getMonthlyDashboard = async (req, res) => {
     res.json({
       monthly: months,
       yearlyTotal: {
-        total_income: yearlyTotalResult.rows[0].total_income || 0,
-        total_expenses: yearlyTotalResult.rows[0].total_expenses || 0,
+        total_income: allTimeTotalResult.rows[0].total_income || 0,
+        total_expenses: allTimeTotalResult.rows[0].total_expenses || 0,
       },
       monthlyTotals: monthlyTotals
     });
